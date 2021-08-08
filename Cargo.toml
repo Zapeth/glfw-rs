@@ -29,15 +29,15 @@ version = "^3.3"
 optional = true
 version = "^0.23"
 
-[dependencies.vk-sys]
+[dependencies.ash]
 optional = true
-version = "^0.4"
+version = "0.33"
 
 [dev-dependencies]
-vk-sys = "^0.4"
+ash = "0.33"
 image = "^0.23"
 
 [features]
 all = ["image", "vulkan"]
 default = ["glfw-sys"]
-vulkan = ["vk-sys"]
+vulkan = ["ash"]

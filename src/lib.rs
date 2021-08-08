@@ -81,8 +81,6 @@
 
 // TODO: Document differences between GLFW and glfw-rs
 
-#[cfg(feature = "vulkan")]
-extern crate vk_sys;
 #[macro_use]
 extern crate log;
 #[macro_use]
@@ -111,7 +109,7 @@ use std::sync::atomic::{AtomicUsize, Ordering};
 use std::sync::mpsc::{channel, Receiver, Sender};
 
 #[cfg(feature = "vulkan")]
-use vk_sys::{
+use ash::vk::{
     self as vk, AllocationCallbacks as VkAllocationCallbacks, Instance as VkInstance,
     PhysicalDevice as VkPhysicalDevice, Result as VkResult, SurfaceKHR as VkSurfaceKHR,
 };

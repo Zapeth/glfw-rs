@@ -22,7 +22,7 @@ use std::os::raw::{c_char, c_double, c_float, c_int, c_ulonglong};
 use std::os::raw::{c_uchar, c_uint, c_ushort, c_void};
 
 #[cfg(feature = "vulkan")]
-use vk_sys::{
+use ash::vk::{
     AllocationCallbacks as VkAllocationCallbacks, Instance as VkInstance,
     PhysicalDevice as VkPhysicalDevice, Result as VkResult, SurfaceKHR as VkSurfaceKHR,
 };
