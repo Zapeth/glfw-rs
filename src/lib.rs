@@ -115,6 +115,8 @@ use ash::vk::{
 };
 #[cfg(feature = "vulkan")]
 use ash::prelude::VkResult;
+#[cfg(feature = "vulkan")]
+pub use ash;
 
 /// Alias to `MouseButton1`, supplied for improved clarity.
 pub use self::MouseButton::Button1 as MouseButtonLeft;
