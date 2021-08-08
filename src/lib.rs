@@ -111,8 +111,10 @@ use std::sync::mpsc::{channel, Receiver, Sender};
 #[cfg(feature = "vulkan")]
 use ash::vk::{
     self as vk, AllocationCallbacks as VkAllocationCallbacks, Instance as VkInstance,
-    PhysicalDevice as VkPhysicalDevice, Result as VkResult, SurfaceKHR as VkSurfaceKHR,
+    PhysicalDevice as VkPhysicalDevice, SurfaceKHR as VkSurfaceKHR,
 };
+#[cfg(feature = "vulkan")]
+use ash::prelude::VkResult;
 
 /// Alias to `MouseButton1`, supplied for improved clarity.
 pub use self::MouseButton::Button1 as MouseButtonLeft;
@@ -1328,7 +1330,7 @@ impl Glfw {
     ///
     /// Will return `None` if the API is unavailable.
     #[cfg(feature = "vulkan")]
-    pub fn get_required_instance_extensions(&self) -> Option<Vec<String>> {
+    pub fn get_required_instance_extensions(&self) -> Option<Vec<*const c_char>> {
         let mut len: c_uint = 0;
 
         unsafe {
@@ -1337,10 +1339,7 @@ impl Glfw {
 
             if !raw_extensions.is_null() {
                 return Some(
-                    slice::from_raw_parts(raw_extensions, len as usize)
-                        .iter()
-                        .map(|extensions| string_from_c_str(*extensions))
-                        .collect(),
+                    slice::from_raw_parts(raw_extensions, len as usize).to_vec()
                 );
             }
         }
@@ -2043,10 +2042,21 @@ impl Window {
     pub fn create_window_surface(
         &self,
         instance: VkInstance,
-        allocator: *const VkAllocationCallbacks,
-        surface: *mut VkSurfaceKHR,
-    ) -> VkResult {
-        unsafe { ffi::glfwCreateWindowSurface(instance, self.ptr, allocator, surface) }
+        allocation_callbacks: Option<&VkAllocationCallbacks>,
+    ) -> VkResult<VkSurfaceKHR> {
+        let mut surface = unsafe { mem::zeroed() };
+        let allocator = match allocation_callbacks {
+            Some(inner) => inner as *const VkAllocationCallbacks,
+            _ => std::ptr::null()
+        };
+        let res = unsafe {
+            ffi::glfwCreateWindowSurface(
+                instance,
+                self.ptr,
+                allocator,
+                &mut surface)
+        };
+        res.result_with_success(surface)
     }
     /// Wrapper for `glfwCreateWindow`.
     pub fn create_shared(
