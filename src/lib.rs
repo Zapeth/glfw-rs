@@ -81,6 +81,7 @@
 
 // TODO: Document differences between GLFW and glfw-rs
 
+#[cfg(feature="log")]
 #[macro_use]
 extern crate log;
 #[macro_use]
@@ -444,10 +445,18 @@ pub static FAIL_ON_ERRORS: Option<ErrorCallback<()>> = Some(Callback {
     data: (),
 });
 
+#[cfg(feature="log")]
 /// The function to be used with the `LOG_ERRORS` callback.
 pub fn log_errors(_: Error, description: String, _: &()) {
     error!("GLFW Error: {}", description);
 }
+
+#[cfg(not(feature="log"))]
+/// The function to be used with the `LOG_ERRORS` callback.
+pub fn log_errors(_: Error, description: String, _: &()) {
+    eprintln!("GLFW Error: {}", description);
+}
+
 
 /// A callback that logs each error as it is encountered without triggering a
 /// task failure.
@@ -840,35 +849,7 @@ impl Glfw {
     /// ~~~
     pub fn with_primary_monitor<T, F>(&mut self, f: F) -> T
     where
-        F: Fn(&mut Self, Option<&Monitor>) -> T,
-    {
-        match unsafe { ffi::glfwGetPrimaryMonitor() } {
-            ptr if ptr.is_null() => f(self, None),
-            ptr => f(self, Some(&Monitor { ptr })),
-        }
-    }
-
-    /// Supplies the primary monitor to the closure provided, if it exists.
-    /// This is usually the monitor where elements like the Windows task bar or
-    /// the OS X menu bar is located.
-    ///
-    /// Variant that can accept an `FnMut` closure.
-    ///
-    /// # Example
-    ///
-    /// ~~~ignore
-    /// glfw.with_primary_monitor(|_: &mut _, m: Option<&glfw::Monitor>| {
-    ///     let monitor = m.unwrap();
-    ///
-    ///     let mode: glfw::VidMode = monitor.get_video_mode().unwrap();
-    ///
-    ///     // Modifying `window` requires `FnMut`
-    ///     window.set_monitor(glfw::WindowMode::FullScreen(&monitor), 0, 0, mode.width, mode.height, Some(mode.refresh_rate));
-    /// });
-    /// ~~~
-    pub fn with_primary_monitor_mut<T, F>(&mut self, mut f: F) -> T
-    where
-        F: FnMut(&mut Self, Option<&Monitor>) -> T,
+        F: FnOnce(&mut Self, Option<&Monitor>) -> T,
     {
         match unsafe { ffi::glfwGetPrimaryMonitor() } {
             ptr if ptr.is_null() => f(self, None),
@@ -890,38 +871,7 @@ impl Glfw {
     /// ~~~
     pub fn with_connected_monitors<T, F>(&mut self, f: F) -> T
     where
-        F: Fn(&mut Self, &[Monitor]) -> T,
-    {
-        unsafe {
-            let mut count = 0;
-            let ptr = ffi::glfwGetMonitors(&mut count);
-            f(
-                self,
-                &slice::from_raw_parts(ptr as *const _, count as usize)
-                    .iter()
-                    .map(|&ptr| Monitor { ptr })
-                    .collect::<Vec<Monitor>>(),
-            )
-        }
-    }
-
-    /// Supplies a vector of the currently connected monitors to the closure
-    /// provided.
-    ///
-    /// Variant that can accept an `FnMut` closure.
-    ///
-    /// # Example
-    ///
-    /// ~~~ignore
-    /// glfw.with_connected_monitors(|_, monitors| {
-    ///     for monitor in monitors.iter() {
-    ///         println!("{}: {}", monitor.get_name(), monitor.get_video_mode());
-    ///     }
-    /// });
-    /// ~~~
-    pub fn with_connected_monitors_mut<T, F>(&mut self, mut f: F) -> T
-    where
-        F: FnMut(&mut Self, &[Monitor]) -> T,
+        F: FnOnce(&mut Self, &[Monitor]) -> T,
     {
         unsafe {
             let mut count = 0;
@@ -2245,33 +2195,7 @@ impl Window {
     /// ~~~
     pub fn with_window_mode<T, F>(&self, f: F) -> T
     where
-        F: Fn(WindowMode<'_>) -> T,
-    {
-        let ptr = unsafe { ffi::glfwGetWindowMonitor(self.ptr) };
-        if ptr.is_null() {
-            f(WindowMode::Windowed)
-        } else {
-            f(WindowMode::FullScreen(&Monitor { ptr }))
-        }
-    }
-
-    /// Returns whether the window is fullscreen or windowed.
-    ///
-    /// Variant that can accept an `FnMut` closure.
-    ///
-    /// # Example
-    ///
-    /// ~~~ignore
-    /// window.with_window_mode(|mode| {
-    ///     match mode {
-    ///         glfw::Windowed => println!("Windowed"),
-    ///         glfw::FullScreen(m) => println!("FullScreen({})", m.get_name()),
-    ///     }
-    /// });
-    /// ~~~
-    pub fn with_window_mode_mut<T, F>(&self, mut f: F) -> T
-    where
-        F: FnMut(WindowMode<'_>) -> T,
+        F: FnOnce(WindowMode<'_>) -> T,
     {
         let ptr = unsafe { ffi::glfwGetWindowMonitor(self.ptr) };
         if ptr.is_null() {
@@ -2870,6 +2794,7 @@ impl Drop for Window {
         drop(self.drop_sender.take());
 
         // Check if all senders from the child `RenderContext`s have hung up.
+        #[cfg(feature="log")]
         if self.drop_receiver.try_recv() != Err(std::sync::mpsc::TryRecvError::Disconnected) {
             debug!("Attempted to drop a Window before the `RenderContext` was dropped.");
             debug!("Blocking until the `RenderContext` was dropped.");
