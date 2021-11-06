@@ -1989,27 +1989,6 @@ impl Window {
             .get_physical_device_presentation_support_raw(instance, device, queue_family)
     }
 
-    /// wrapper for `glfwCreateWindowSurface`
-    #[cfg(feature = "vulkan")]
-    pub fn create_window_surface(
-        &self,
-        instance: VkInstance,
-        allocation_callbacks: Option<&VkAllocationCallbacks>,
-    ) -> VkResult<VkSurfaceKHR> {
-        let mut surface = unsafe { mem::zeroed() };
-        let allocator = match allocation_callbacks {
-            Some(inner) => inner as *const VkAllocationCallbacks,
-            _ => std::ptr::null()
-        };
-        let res = unsafe {
-            ffi::glfwCreateWindowSurface(
-                instance,
-                self.ptr,
-                allocator,
-                &mut surface)
-        };
-        res.result_with_success(surface)
-    }
     /// Wrapper for `glfwCreateWindow`.
     pub fn create_shared(
         &self,
@@ -2880,6 +2859,29 @@ pub trait Context {
     /// Wrapper for `glfwPostEmptyEvent`.
     fn post_empty_event(&self) {
         unsafe { ffi::glfwPostEmptyEvent() }
+    }
+
+    /// wrapper for `glfwCreateWindowSurface`
+    #[cfg(feature = "vulkan")]
+    fn create_window_surface(
+        &self,
+        instance: VkInstance,
+        allocation_callbacks: Option<&VkAllocationCallbacks>,
+    ) -> VkResult<VkSurfaceKHR> {
+        let ptr = self.window_ptr();
+        let mut surface = unsafe { mem::zeroed() };
+        let allocator = match allocation_callbacks {
+            Some(inner) => inner as *const VkAllocationCallbacks,
+            _ => std::ptr::null()
+        };
+        let res = unsafe {
+            ffi::glfwCreateWindowSurface(
+                instance,
+                ptr,
+                allocator,
+                &mut surface)
+        };
+        res.result_with_success(surface)
     }
 }
 
